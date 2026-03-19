@@ -1,74 +1,27 @@
 /*=====================================================================
   structs.h - Shared Data Structures
 
-  Central repository for all data structures used throughout the project.
-  Include this file wherever you need these structures.
+  LoraMeister - Central repository for all data structures.
 
-  PURPOSE:
-  Provides common data types shared between multiple modules to avoid
-  code duplication and maintain consistency.
+  STRUCTURES:
+  - DeviceState      : LED, touch, communication, LoRa signal, sensor data
+  - TimingData       : Timestamp tracking for periodic operations
+  - SpinnerData      : LCD animation symbols
+  - ConnectionState  : Connection status enum
+  - HealthMonitor    : RSSI stats, packet loss, recovery
+  - WatchdogConfig   : Connection watchdog thresholds
+  - MeshMessage      : Mesh network message with hop tracking
+  - RelayStats       : Relay node statistics
+  - SeenMessage      : Duplicate message detection
+  - DeviceTracker    : Multi-device tracking for receiver
+  - BatteryStatus    : Battery voltage and charge level
 
-  STRUCTURES DEFINED:
-
-  1. DeviceState (lines 15-35)
-     - Tracks LED, touch sensor, and communication state
-     - LoRa signal quality (RSSI, SNR)
-     - Mesh network info (source ID, hop count)
-     - Used by: main loop, message handlers, display modules
-
-  2. TimingData (lines 40-50)
-     - Timestamp tracking for periodic operations
-     - Used by: main loop for scheduling tasks
-
-  3. SpinnerData (lines 55-60)
-     - Loading animation symbols for LCD
-     - Used by: LCD display module
-
-  4. ConnectionState enum (lines 65-72)
-     - Connection status states (UNKNOWN, CONNECTED, WEAK, LOST)
-     - Used by: system_monitoring.h (formerly health_monitor.h)
-
-  5. WatchdogConfig (lines 75-85)
-     - Connection watchdog thresholds and timeouts
-     - Used by: system_monitoring.h for connection health checks
-
-  6. HealthMonitor (lines 90-120)
-     - Comprehensive connection health tracking
-     - RSSI statistics, packet loss, recovery attempts
-     - Used by: system_monitoring.h, main loop
-
-  7. MeshMessage (lines 125-145)
-     - Mesh network message structure
-     - Routing info, TTL, unique IDs for duplicate detection
-     - Used by: lora_handler.h for mesh networking
-
-  8. RelayStats (lines 150-165)
-     - Relay/mesh node statistics
-     - Forwarded packets, duplicate detection
-     - Used by: Relay mode in main loop
-
-  9. SeenMessage (lines 170-180)
-     - Duplicate message detection
-     - Used by: Relay mode for loop prevention
-
-  10. BatteryStatus (lines 305-315)
-     - Battery voltage, percentage, low/critical flags
-     - Used by: power_management.h for battery monitoring
-
-  CONFIGURATION:
-  These structures are defined here but configured in config.h
-  Example: RSSI thresholds, timeouts → config.h lines 120-145
-
-  USAGE EXAMPLE:
+  USAGE:
     #include "structs.h"
 
     DeviceState myDevice;
     myDevice.ledState = true;
     myDevice.rssi = -75;
-
-    HealthMonitor health;
-    initHealthMonitor(health);  // From system_monitoring.h
-
 =======================================================================*/
 
 #ifndef STRUCTS_H

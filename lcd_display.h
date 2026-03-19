@@ -1,8 +1,7 @@
 /*=====================================================================
   lcd_display.h - LCD Display Manager (16x2 I2C)
 
-  Unified LCD display manager with multiple layout configurations.
-  Clearly separated from TFT display (display_sender.h).
+  LoraMeister - LCD display manager with multiple layout configurations.
 
   FEATURES:
   - Multiple display layouts (Sender, Receiver, Light-sensor focused)
@@ -39,9 +38,6 @@
 #include <Arduino.h>
 #include "config.h"
 #include "structs.h"
-
-// NOTE: LightDetector struct is defined in fire_alarm_detector.h
-// which MUST be included BEFORE this file in the main .ino file!
 
 // ESP32 internal temperature sensor (for Layout 4)
 #if ENABLE_EXTENDED_TELEMETRY
@@ -93,7 +89,6 @@ enum LCDLayout {
 
 /**
  * Initialize LCD display with auto-detection
- * Shows "Zignalmeister 2000" loading screen
  */
 inline void initLCDDisplay() {
   #if ENABLE_LCD
@@ -232,7 +227,7 @@ inline void lcdClearRow(int row) {
 
 /**
  * LAYOUT_1: Minimalist Signal Display
- * Line 1: "RoboterGruppe 9 "
+ * Line 1: "  LoraMeister   "
  * Line 2: " RSSI: -85 dBm  "
  *
  * Simple, clean display focusing on signal strength (dBm reading)
@@ -240,7 +235,7 @@ inline void lcdClearRow(int row) {
 inline void renderLayout1(DeviceState& local, DeviceState& remote, HealthMonitor& health) {
   // Line 1: Centered project name
   lcd.setCursor(0, 0);
-  lcd.print("RoboterGruppe 9 ");
+  lcd.print("  LoraMeister   ");
 
   // Line 2: RSSI in dBm (centered with spacing for style)
   lcd.setCursor(0, 1);

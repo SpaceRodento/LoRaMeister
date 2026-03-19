@@ -59,10 +59,6 @@
 #include "system_monitoring.h"
 
 // Sensors
-#if ENABLE_AUDIO_DETECTION || ENABLE_LIGHT_DETECTION
-  #include "fire_alarm_detector.h"
-#endif
-
 #if ENABLE_MICROPHONE
   #include "microphone.h"
 #endif
@@ -425,20 +421,13 @@ void buildPayload(char* buffer, int bufSize) {
     micDb = mic_getDB();
   #endif
 
-  int lightState = 0;
-  #if ENABLE_LIGHT_DETECTION
-    extern LightDetector lightDetector;
-    lightState = lightDetector.lightState;
-  #endif
-
   snprintf(buffer, bufSize,
-    "SEQ:%d,LED:%d,TOUCH:%d,SPIN:%d,COUNT:%d,LIT:%d,MIC:%d,MICDB:%d",
+    "SEQ:%d,LED:%d,TOUCH:%d,SPIN:%d,COUNT:%d,MIC:%d,MICDB:%d",
     local.sequenceNumber,
     local.ledState ? 1 : 0,
     local.touchState ? 1 : 0,
     spinner.index,
     local.messageCount,
-    lightState,
     micP2P,
     micDb
   );
@@ -651,10 +640,6 @@ void setup() {
   }
 
   // ── Sensors ──
-  #if ENABLE_AUDIO_DETECTION || ENABLE_LIGHT_DETECTION
-    initFireAlarmDetector();
-  #endif
-
   #if ENABLE_MICROPHONE
     mic_init();
   #endif

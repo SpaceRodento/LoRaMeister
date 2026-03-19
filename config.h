@@ -14,15 +14,22 @@
   - RECEIVER: GPIO16 connected to GPIO17 (jumper wire)
   - SENDER:   GPIO16 floating (no connection)
   - RELAY:    GPIO19 connected to GPIO20 (jumper wire)
+
+  ADDING NEW SENSORS:
+  1. Add ENABLE_xxx and config defines in the SENSORS section
+  2. Create a new xxx_sensor.h file (see microphone.h as example)
+  3. Add fields to DeviceState in structs.h for sensor data
+  4. Add payload fields in firmware.ino buildPayload()/parsePayload()
+  5. Add LCD layout in lcd_display.h if needed
 =======================================================================*/
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
 //=============================================================================
-// QUICK SETTINGS
+// QUICK SETTINGS - Change these to configure your build
 //=============================================================================
-#define QS_LCD_LAYOUT              1       // 1=Minimalist, 2=LoRa Range, 8=Microphone
+#define QS_LCD_LAYOUT              8       // 1=Signal, 2=Range Test, 4=Debug, 8=Microphone
 #define QS_LORA_SEND_INTERVAL_MS   3500    // Send interval (ms)
 #define QS_ACK_INTERVAL            30      // ACK every Nth packet
 #define QS_DEBUG_MIC               false   // MAX4466 debug to Serial
@@ -31,14 +38,11 @@
 // PROJECT INFO
 //=============================================================================
 #define PROJECT_NAME "LoraMeister"
-#define PROJECT_VERSION "0.1.0"
+#define PROJECT_VERSION "0.2.0"
 #define PROJECT_VERSION_MAJOR 0
-#define PROJECT_VERSION_MINOR 1
+#define PROJECT_VERSION_MINOR 2
 #define PROJECT_VERSION_PATCH 0
 #define PROJECT_DATE "2026-03-19"
-
-// Hardware platform (fixed: DevKit + RYLR890)
-#define USE_XIAO_SX1262 false
 
 //=============================================================================
 // PIN DEFINITIONS - ESP32 DevKit V1 + RYLR890/896
@@ -84,29 +88,16 @@
 // ── MAX4466 Microphone ──
 #define MIC_PIN 34                  // ADC1_CH6 (input-only GPIO, perfect for ADC)
 
-// ── LM393 Light Sensor (optional) ──
-#define LIGHT_PIN 34                // LM393 DO pin (shares with MIC if not using LM393)
-#define LIGHT_ANALOG_PIN 32         // LM393 AO pin - ADC1_CH4
-#define LIGHT_VCC_PIN 33            // GPIO power VCC
-#define LIGHT_GND_PIN 27            // GPIO power GND
-
-// ── Proximity (not used, placeholder) ──
-#define PROXIMITY_PIN 12
-#define PROXIMITY_VCC_PIN 13
-#define PROXIMITY_GND_PIN 14
-
-// ── Relay Address ──
-#define LORA_RELAY_ADDRESS 4
-
 //=============================================================================
 // LoRa CONFIGURATION
 //=============================================================================
 #define LORA_RECEIVER_ADDRESS 1
 #define LORA_SENDER_ADDRESS 2
 #define LORA_DISPLAY_ADDRESS 3
-#define LORA_NETWORK_ID 6         // SAME ON ALL DEVICES!
+#define LORA_RELAY_ADDRESS 4
+#define LORA_NETWORK_ID 6           // SAME ON ALL DEVICES!
 #define LORA_BAUDRATE 115200
-#define LORA_BAND 868             // 868 MHz (Europe)
+#define LORA_BAND 868               // 868 MHz (Europe)
 #define LORA_NETWORK_ID_VALUE 6
 #define LORA_BROADCAST_ADDR 0
 
@@ -135,8 +126,12 @@
 #define ENABLE_DUAL_MODE_RELAY false
 
 //=============================================================================
-// BIDIRECTIONAL COMMUNICATION (TDMA)
+// BIDIRECTIONAL COMMUNICATION
 //=============================================================================
+#define ENABLE_BIDIRECTIONAL true
+#define ACK_INTERVAL QS_ACK_INTERVAL
+#define LISTEN_TIMEOUT 150
+
 #define ENABLE_BIDIRECTIONAL_TDMA true
 #define BEACON_LISTEN_WINDOW_MS 450
 #define BEACON_MAX_WAIT_MS 4000
@@ -150,10 +145,6 @@
 
 #define ENABLE_COMMAND_DEDUPLICATION true
 #define COMMAND_DEDUP_TIMEOUT_MS 5000
-
-#define ENABLE_BIDIRECTIONAL true
-#define ACK_INTERVAL QS_ACK_INTERVAL
-#define LISTEN_TIMEOUT 150
 
 //=============================================================================
 // AUTO-ADDRESS & SEND INTERVAL
@@ -176,7 +167,7 @@
 #define MAX_RX_BUFFER 256
 #define RX_TIMEOUT_WARNING 5000
 
-// CSV/JSON output
+// CSV output (for data logging via USB serial)
 #define ENABLE_CSV_OUTPUT true
 #define ENABLE_JSON_OUTPUT false
 #define DATA_OUTPUT_INTERVAL 2000
@@ -184,25 +175,17 @@
 //=============================================================================
 // DISPLAY
 //=============================================================================
-// LCD only (no TFT in this project)
 #define DISPLAY_MODE 1              // 1 = LCD only
 #define FORCE_LCD false
 
-#define ENABLE_LCD              (DISPLAY_MODE == 1 || DISPLAY_MODE == 2)
-#define ENABLE_DISPLAY_OUTPUT   false  // No TFT
+#define ENABLE_LCD              (DISPLAY_MODE == 1)
+#define ENABLE_DISPLAY_OUTPUT   false
 
 #define LCD_LAYOUT_NUMBER QS_LCD_LAYOUT
 #define LCD_SENDER_ENABLED true
 
-// TFT placeholders (not used, but referenced by display_hal)
-#define DISPLAY_TX_PIN 23
-#define DISPLAY_RX_PIN 22
-#define DISPLAY_UPDATE_INTERVAL 2000
-#define DISPLAY_DETECT_TIMEOUT 2000
-#define ENABLE_DISPLAY_AUTODETECT false
-
 //=============================================================================
-// ESSENTIAL FEATURES
+// SYSTEM FEATURES
 //=============================================================================
 #define ENABLE_WATCHDOG true
 #define WATCHDOG_TIMEOUT_S 10
@@ -220,9 +203,7 @@
 #define ENABLE_NVS_STORAGE true
 #define NVS_NAMESPACE "lorameister"
 
-// OTA disabled
 #define ENABLE_OTA false
-
 #define ENABLE_PERFORMANCE_MONITOR true
 #define PERF_REPORT_INTERVAL 60000
 
@@ -239,72 +220,7 @@
 #define TOUCH_COMMAND_ACTION "LED_BLINK:3"
 #define TOUCH_COMMAND_COOLDOWN_MS 2000
 
-// ── Battery Monitor (disabled) ──
-#define ENABLE_BATTERY_MONITOR false
-#define BATTERY_PIN 35
-#define BATTERY_VOLTAGE_DIVIDER 2.0
-#define BATTERY_CHECK_INTERVAL 60000
-#define BATTERY_LOW_THRESHOLD 3.3
-#define BATTERY_CRITICAL_THRESHOLD 3.0
-#define BATTERY_MIN_VOLTAGE 3.0
-#define BATTERY_MAX_VOLTAGE 4.2
-
-// ── Current Monitor (disabled) ──
-#define ENABLE_CURRENT_MONITOR false
-#define CURRENT_MONITOR_I2C_ADDR 0x40
-#define CURRENT_CHECK_INTERVAL 10000
-#define CURRENT_HIGH_THRESHOLD 200
-#define CURRENT_MAX_THRESHOLD 500
-
-// ── Audio Detection (legacy, for fire alarm sound) ──
-#define ENABLE_AUDIO_DETECTION false
-#define AUDIO_PIN 34
-#define AUDIO_SAMPLES 50
-#define AUDIO_THRESHOLD 200
-#define AUDIO_PEAK_MIN 2
-#define AUDIO_PEAK_MAX 6
-#define AUDIO_COOLDOWN 5000
-
-// ── Light Detection (LM393, disabled by default for LoraMeister) ──
-#define ENABLE_LIGHT_DETECTION false
-#define LM393_BRIGHT_THRESHOLD 1000
-#define LM393_DARK_THRESHOLD 3000
-#define LIGHT_FLASH_MIN_MS 10
-#define LIGHT_FLASH_MAX_MS 500
-#define LIGHT_FLASH_INTERVAL_MIN 100
-#define LIGHT_FLASH_INTERVAL_MAX 5200
-#define LIGHT_FLASH_CONFIRM_COUNT 3
-#define LM393_DEBUG_FORCE_HIGH_PRIORITY true
-#define LM393_ENABLE_SCHEDULED_WINDOW false
-#define LM393_SCHEDULE_INTERVAL_HOURS 1
-#define LM393_SCHEDULE_DURATION_SEC 120
-#define LM393_ENABLE_DO_TRIGGER false
-#define LM393_ENABLE_DELTA_DETECTION false
-#define LM393_DELTA_THRESHOLD 200
-#define LM393_DELTA_WINDOW_MS 100
-#define LM393_ENABLE_FLASH_SEQUENCE false
-#define LM393_ENABLE_HYBRID_FILTER false
-#define LM393_HYBRID_CONFIRM_THRESHOLD 1000
-#define LM393_ENABLE_ADAPTIVE_BASELINE true
-#define LM393_BASELINE_WINDOW_SEC 10
-#define LM393_BASELINE_DEVIATION 500
-#define LM393_HIGH_PRIORITY_TIMEOUT 5000
-#define LM393_ENABLE_STATUS_CHECK true
-#define LM393_ENABLE_ALARM_PATTERN true
-#define LM393_STATUS_FLASH_TIMEOUT 120000
-#define DEBUG_LIGHT_SENSOR false
-#define LM393_AUTO_DETECT_SENSOR true
-
-// ── Proximity (disabled) ──
-#define ENABLE_PROXIMITY_DETECTION false
-#define PROXIMITY_SENSOR_TYPE 0
-#define PROXIMITY_ANALOG_PIN 35
-#define PROXIMITY_TRIGGER_MODE 1
-#define PROXIMITY_MIN_DURATION_MS 100
-#define PROXIMITY_COOLDOWN_MS 1000
-#define PROXIMITY_ACTIVE_HIGH true
-
-// ── MAX4466 Microphone ──
+// ── MAX4466 Microphone (example sensor) ──
 // Analog electret microphone module, reads sound level
 // Connect: OUT -> GPIO34 (ADC), VCC -> 3.3V, GND -> GND
 // Output: VCC/2 DC bias (~1.65V), audio signal superimposed
@@ -317,56 +233,32 @@
 #define MIC_DB_MAX 100              // Maximum dB to display (loud)
 #define DEBUG_MICROPHONE QS_DEBUG_MIC
 
+// ── Disabled sensor stubs (enable when adding hardware) ──
+#define ENABLE_AUDIO_DETECTION false
+#define ENABLE_LIGHT_DETECTION false
+#define ENABLE_PROXIMITY_DETECTION false
+#define ENABLE_BATTERY_MONITOR false
+#define ENABLE_CURRENT_MONITOR false
+
 //=============================================================================
 // ADVANCED
 //=============================================================================
 
-// Data buffer (disabled)
-#define ENABLE_DATA_BUFFER false
-#define BUFFER_MAX_ENTRIES 100
-#define BUFFER_ENTRY_MAX_LENGTH 200
-#define BUFFER_ENABLE_TIMESTAMPS true
-
-// Flash logger (disabled)
-#define ENABLE_FLASH_LOGGER false
-#define FLASH_MAX_EVENTS 500
-#define FLASH_WRITE_LIMIT_PER_HOUR 100
-#define FLASH_MIN_LOG_LEVEL 0
-
 // Extended telemetry (disabled)
 #define ENABLE_EXTENDED_TELEMETRY false
 
-// Packet statistics (disabled)
-#define ENABLE_PACKET_STATS false
-#define PACKET_STATS_INTERVAL 30000
-
-// Power management (disabled for wired power)
+// Power management (sleep disabled for wired power, GPIO power available)
 #define ENABLE_POWER_SAVE false
 #define POWER_SLEEP_MODE 0
 #define POWER_LIGHT_SLEEP_MS 0
 #define POWER_DEEP_SLEEP_S 28800
-#define POWER_GRACE_PERIOD_S 300
-#define POWER_STRATEGY_SELECT 0
-#define POWER_LAB_PROFILER_ENABLE false
-#define POWER_LAB_USE_INA219 false
-#define POWER_LAB_PHASE_DURATION_MS 10000
-
-// GPIO power management
 #define ENABLE_GPIO_POWER true
+#define ENABLE_FLASH_LOGGER false
 
+// GPIO power for sensors (when ENABLE_GPIO_POWER is true)
 #define LCD_USE_GPIO_POWER false
 #define LCD_VCC_PIN 19
 #define LCD_EXPECTED_CURRENT_MA 15
-
-#define LIGHT_USE_GPIO_POWER false
-#define LIGHT_EXPECTED_CURRENT_MA 5
-
-#define PROXIMITY_USE_GPIO_POWER false
-#define PROXIMITY_EXPECTED_CURRENT_MA 12
-
-#define AUDIO_USE_GPIO_POWER false
-#define AUDIO_VCC_PIN 15
-#define AUDIO_EXPECTED_CURRENT_MA 10
 
 // Debug
 #define DEBUG_LORA_AT false

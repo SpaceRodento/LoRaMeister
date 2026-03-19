@@ -1,8 +1,8 @@
 /*=====================================================================
   power_management.h - Unified Power Management System
 
-  Combines CPU frequency control, sleep modes, and GPIO power management
-  into a single coherent module for ESP32 power optimization.
+  LoraMeister - CPU frequency control, sleep modes, and GPIO power
+  management for ESP32 power optimization.
 
   FEATURES:
 
@@ -96,9 +96,7 @@
 
 // USBSerial (HWCDC) is available globally when ARDUINO_USB_CDC_ON_BOOT is set
 
-#if ENABLE_FLASH_LOGGER
-  #include "flash_logger.h"
-#endif
+// flash_logger.h not included (ENABLE_FLASH_LOGGER = false)
 
 // ═══════════════════════════════════════════════════════════════════
 // SECTION 1: CPU FREQUENCY & SLEEP MODE CONFIGURATION
@@ -276,18 +274,6 @@ void powerManagerIdle(uint32_t ms) {
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
     }
 
-    // K1: poll after every timer wake (GPIO21 shared with LED, GPIO wake unreliable)
-    #if defined(ENABLE_K1_BUTTON) && ENABLE_K1_BUTTON
-    pinMode(K1_BUTTON_PIN, INPUT_PULLUP);
-    delay(5);
-    if (digitalRead(K1_BUTTON_PIN) == LOW) {
-        Serial.println(F("[PowerSave] K1 → restart"));
-        Serial.flush();
-        ESP.restart();
-    }
-    pinMode(K1_BUTTON_PIN, OUTPUT);
-    #endif
-
     // Update sleep stats
     powerStats.sleepTimeMs += (millis() - sleepStart);
 
@@ -322,11 +308,7 @@ void powerManagerDeepSleep(uint32_t seconds) {
     Serial.print(F("  Duration:    "));
     Serial.print(seconds);
     Serial.println(F(" seconds"));
-    Serial.print(F("  Wake cause:  TIMER"));
-    #if defined(ENABLE_K1_BUTTON) && ENABLE_K1_BUTTON
-    Serial.print(F(" + EXT1 (K1 button)"));
-    #endif
-    Serial.println();
+    Serial.println(F("  Wake cause:  TIMER"));
     Serial.println(F("  Radio:       sleeping (lora_sleep called by caller)"));
     Serial.println(F("  Next boot:   full reboot → setup()"));
     Serial.println(F("======================================================="));
@@ -343,14 +325,6 @@ void powerManagerDeepSleep(uint32_t seconds) {
     Serial.println(F("[PowerManager] Serial flush + sleep..."));
     Serial.flush();  // Varmista kaiken tulostuksen lähteminen
 
-    // Disconnect USB CDC before deep sleep – otherwise the USB peripheral
-    // stays active and draws ~0.5–1 mA, preventing true ~14 µA deep sleep.
-    // When ARDUINO_USB_CDC_ON_BOOT, Serial IS the USB CDC (HWCDC).
-    #if defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
-    Serial.end();
-    delay(10);
-    #endif
-
     // Pysäytä watchdog (deep sleep = reboot, WDT ei saa laueta ennen sitä)
     #if ENABLE_WATCHDOG
     esp_task_wdt_deinit();
@@ -358,13 +332,6 @@ void powerManagerDeepSleep(uint32_t seconds) {
 
     // Aseta timer-herätys
     esp_sleep_enable_timer_wakeup((uint64_t)seconds * 1000000ULL);
-
-    // K1-nappi herätyssignaaliksi deep sleepistä (GPIO21, active low)
-    // ESP32S3: GPIO21 = RTC channel 21 → tukee EXT1-herätystä
-    #if defined(ENABLE_K1_BUTTON) && ENABLE_K1_BUTTON
-    esp_sleep_enable_ext1_wakeup(1ULL << K1_BUTTON_PIN, ESP_EXT1_WAKEUP_ANY_LOW);
-    Serial.println(F("[PowerManager] K1 button (GPIO21) EXT1 deep sleep wake enabled"));
-    #endif
 
     esp_deep_sleep_start();
     // Suoritus EI koskaan jatku tänne — ESP32 rebootaa herätessään
@@ -674,25 +641,9 @@ void initGpioPowerManagement() {
     }
   #endif
 
-  #if defined(PROXIMITY_USE_GPIO_POWER) && PROXIMITY_USE_GPIO_POWER && defined(ENABLE_PROXIMITY_DETECTION) && ENABLE_PROXIMITY_DETECTION
-    #if defined(PROXIMITY_GND_PIN)
-      if (!registerPowerPin(PROXIMITY_VCC_PIN, PROXIMITY_GND_PIN, "Proximity Sensor", PROXIMITY_EXPECTED_CURRENT_MA)) {
-    #else
-      if (!registerPowerPin(PROXIMITY_VCC_PIN, -1, "Proximity Sensor", PROXIMITY_EXPECTED_CURRENT_MA)) {
-    #endif
-      Serial.println("❌ Failed to register Proximity sensor power pin");
-    }
-  #endif
-
-  #if defined(AUDIO_USE_GPIO_POWER) && AUDIO_USE_GPIO_POWER && defined(ENABLE_AUDIO_DETECTION) && ENABLE_AUDIO_DETECTION
-    #if defined(AUDIO_GND_PIN)
-      if (!registerPowerPin(AUDIO_VCC_PIN, AUDIO_GND_PIN, "Audio Sensor", AUDIO_EXPECTED_CURRENT_MA)) {
-    #else
-      if (!registerPowerPin(AUDIO_VCC_PIN, -1, "Audio Sensor", AUDIO_EXPECTED_CURRENT_MA)) {
-    #endif
-      Serial.println("❌ Failed to register Audio sensor power pin");
-    }
-  #endif
+  // Additional sensors can register their GPIO power pins here
+  // Example:
+  // registerPowerPin(SENSOR_VCC_PIN, SENSOR_GND_PIN, "My Sensor", 10);
 
   // Summary
   Serial.print("  Registered:  ");
@@ -709,11 +660,6 @@ void initGpioPowerManagement() {
     Serial.println("\n❌ SAFETY ERROR: Total current exceeds limit!");
     Serial.println("   Reduce number of GPIO-powered devices.");
     safetyShutdown = true;
-
-    #if defined(ENABLE_FLASH_LOGGER) && ENABLE_FLASH_LOGGER
-      logFlashEvent(EVENT_CRITICAL, CAT_SYSTEM, "GPIO power limit exceeded",
-                   totalEstimatedCurrent);
-    #endif
 
     return;
   }
@@ -759,11 +705,6 @@ void powerCycleDevice(uint8_t vccPin, uint16_t delayMs = 500) {
       powerOnPin(i);
       delay(GPIO_POWER_STABILIZE_MS);
 
-      #if defined(ENABLE_FLASH_LOGGER) && ENABLE_FLASH_LOGGER
-        logFlashEvent(EVENT_WARNING, CAT_SYSTEM, "GPIO power cycle",
-                     powerPins[i].vccPin);
-      #endif
-
       return;
     }
   }
@@ -786,11 +727,6 @@ void emergencyShutdownGPIOPower() {
   }
 
   safetyShutdown = true;
-
-  #if defined(ENABLE_FLASH_LOGGER) && ENABLE_FLASH_LOGGER
-    logFlashEvent(EVENT_CRITICAL, CAT_SYSTEM, "GPIO emergency shutdown",
-                 totalEstimatedCurrent);
-  #endif
 
   Serial.println("All GPIO power OFF. System requires reset.\n");
 }
